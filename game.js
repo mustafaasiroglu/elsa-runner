@@ -5,6 +5,7 @@
   const ctx = canvas.getContext("2d");
   const MAX_JUMP_HOLD = .32;
   const JUMP_HOLD_BOOST = 1100;
+  const CAMERA_JPEG_QUALITY = .9;
   const OBSTACLE_DELAY_START = 1.65;
   const OBSTACLE_DELAY_VARIANCE = 1.2;
   const OBSTACLE_DELAY_REDUCTION = .2;
@@ -186,13 +187,15 @@
   }
   async function openCamera() {
     show(ui.cameraScreen); ui.cameraMessage.textContent = "Allow camera access to take a photo."; ui.capture.disabled = true;
-    if (!navigator.mediaDevices?.getUserMedia) { ui.cameraMessage.textContent = "Camera access is not supported here. Try a modern browser over HTTPS."; return; }
+    if (!navigator.mediaDevices?.getUserMedia) { ui.cameraMessage.textContent = "Camera access is not supported. Try a modern browser or ensure you are using HTTPS."; return; }
     try {
       stopCamera(); state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
       ui.cameraPreview.srcObject = state.cameraStream; await ui.cameraPreview.play(); ui.capture.disabled = false;
       ui.cameraMessage.textContent = "Ready! Center your face, then take the photo.";
-    } catch {
-      ui.cameraMessage.textContent = "We could not access the camera. Check your permission and try again.";
+    } catch (error) {
+      ui.cameraMessage.textContent = error.name === "NotAllowedError"
+        ? "Camera access was denied. Allow it in your browser settings and try again."
+        : "We could not access the camera. Check your camera and try again.";
     }
   }
   function captureFace() {
@@ -202,7 +205,7 @@
     photo.getContext("2d").drawImage(ui.cameraPreview, 0, 0, width, height);
     const image = new Image();
     image.onload = () => { state.faceImage = image; stopCamera(); hide(ui.cameraScreen); };
-    image.src = photo.toDataURL("image/jpeg", .9);
+    image.src = photo.toDataURL("image/jpeg", CAMERA_JPEG_QUALITY);
   }
   function frame(now) { const dt = Math.min(.035, (now - state.lastFrame) / 1000 || 0); state.lastFrame = now; update(dt); render(); requestAnimationFrame(frame); }
   ui.play.addEventListener("click", start); ui.again.addEventListener("click", start); ui.resume.addEventListener("click", resume);
