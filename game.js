@@ -168,10 +168,14 @@
   ui.sound.addEventListener("click", () => { state.muted = !state.muted; storage.set("snowySkiesMuted", state.muted); ui.sound.textContent = state.muted ? "🔇 Sound" : "🔊 Sound"; ui.sound.setAttribute("aria-pressed", String(!state.muted)); if (!state.muted) audio.play("collect"); });
   ui.fullscreen.addEventListener("click", async () => { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); storage.set("snowySkiesFullscreen", String(Boolean(document.fullscreenElement))); } catch { /* Fullscreen is optional. */ } });
   canvas.addEventListener("pointerdown", (event) => { if (event.pointerType === "mouse" && event.button !== 0) return; event.preventDefault(); canvas.setPointerCapture?.(event.pointerId); jump(); });
-  canvas.addEventListener("pointerup", () => { if (state.player) state.player.jumpHeld = false; });
-  canvas.addEventListener("pointercancel", () => { if (state.player) state.player.jumpHeld = false; });
+  function endPointerJump(event) {
+    if (state.player) state.player.jumpHeld = false;
+    if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture?.(event.pointerId);
+  }
+  canvas.addEventListener("pointerup", endPointerJump);
+  canvas.addEventListener("pointercancel", endPointerJump);
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
-  window.addEventListener("keydown", (event) => { if (event.code === "Space" && !event.repeat) { event.preventDefault(); jump(); } });
+  window.addEventListener("keydown", (event) => { if (event.code === "Space") { event.preventDefault(); jump(); } });
   window.addEventListener("keyup", (event) => { if (event.code === "Space" && state.player) state.player.jumpHeld = false; });
   window.addEventListener("blur", pause); document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   window.addEventListener("resize", resize); resize(); reset(); ui.sound.textContent = state.muted ? "🔇 Sound" : "🔊 Sound"; ui.sound.setAttribute("aria-pressed", String(!state.muted)); requestAnimationFrame(frame);
