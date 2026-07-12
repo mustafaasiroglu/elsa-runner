@@ -176,6 +176,7 @@
   }
   function drawFacePhoto(x, y, radius) {
     const image = state.faceImage, sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+    if (!sourceSize) return;
     ctx.save(); ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.clip();
     ctx.drawImage(image, (image.naturalWidth - sourceSize) / 2, (image.naturalHeight - sourceSize) / 2, sourceSize, sourceSize, x - radius, y - radius, radius * 2, radius * 2);
     ctx.restore();
@@ -205,11 +206,11 @@
   }
   function captureFace() {
     const { videoWidth: width, videoHeight: height } = ui.cameraPreview;
-    if (!width || !height) return;
+    if (!width || !height) { ui.cameraMessage.textContent = "Unable to capture photo. Wait for the camera preview to load."; return; }
     const photo = document.createElement("canvas"); photo.width = width; photo.height = height;
     photo.getContext("2d").drawImage(ui.cameraPreview, 0, 0, width, height);
     photo.toBlob((blob) => {
-      if (!blob) return;
+      if (!blob) { ui.cameraMessage.textContent = "Failed to create the photo. Please try again."; return; }
       const image = new Image(), faceImageUrl = URL.createObjectURL(blob);
       image.onload = () => {
         if (state.faceImageUrl) URL.revokeObjectURL(state.faceImageUrl);
