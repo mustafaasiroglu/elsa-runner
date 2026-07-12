@@ -27,7 +27,7 @@
     status: "start", width: 0, height: 0, ground: 0, time: 0, distance: 0, score: 0, flakes: 0,
     best: Number(storage.get("snowySkiesBest", "0")) || 0, muted: storage.get("snowySkiesMuted", "false") === "true",
     player: null, obstacles: [], collectibles: [], particles: [], snow: [], clouds: [], nextObstacle: 1.5,
-    nextCollectible: 2.5, lastFrame: 0, shake: 0, faceImage: null, cameraStream: null
+    nextCollectible: 2.5, lastFrame: 0, shake: 0, faceImage: null, faceImageUrl: null, cameraStream: null
   };
   const audio = {
     context: null,
@@ -187,7 +187,8 @@
   }
   async function openCamera() {
     show(ui.cameraScreen); ui.cameraMessage.textContent = "Allow camera access to take a photo."; ui.capture.disabled = true;
-    if (!navigator.mediaDevices?.getUserMedia) { ui.cameraMessage.textContent = "Camera access is not supported. Try a modern browser or ensure you are using HTTPS."; return; }
+    if (!navigator.mediaDevices?.getUserMedia) { ui.cameraMessage.textContent = "Camera access is not supported by this browser. Try a modern browser."; return; }
+    if (!window.isSecureContext) { ui.cameraMessage.textContent = "Camera access needs a secure connection. Open the game over HTTPS."; return; }
     try {
       stopCamera(); state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
       ui.cameraPreview.srcObject = state.cameraStream; await ui.cameraPreview.play(); ui.capture.disabled = false;
@@ -203,9 +204,16 @@
     if (!width || !height) return;
     const photo = document.createElement("canvas"); photo.width = width; photo.height = height;
     photo.getContext("2d").drawImage(ui.cameraPreview, 0, 0, width, height);
-    const image = new Image();
-    image.onload = () => { state.faceImage = image; stopCamera(); hide(ui.cameraScreen); };
-    image.src = photo.toDataURL("image/jpeg", CAMERA_JPEG_QUALITY);
+    photo.toBlob((blob) => {
+      if (!blob) return;
+      const image = new Image(), faceImageUrl = URL.createObjectURL(blob);
+      image.onload = () => {
+        if (state.faceImageUrl) URL.revokeObjectURL(state.faceImageUrl);
+        state.faceImage = image; state.faceImageUrl = faceImageUrl; stopCamera(); hide(ui.cameraScreen);
+      };
+      image.onerror = () => URL.revokeObjectURL(faceImageUrl);
+      image.src = faceImageUrl;
+    }, "image/jpeg", CAMERA_JPEG_QUALITY);
   }
   function frame(now) { const dt = Math.min(.035, (now - state.lastFrame) / 1000 || 0); state.lastFrame = now; update(dt); render(); requestAnimationFrame(frame); }
   ui.play.addEventListener("click", start); ui.again.addEventListener("click", start); ui.resume.addEventListener("click", resume);
