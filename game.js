@@ -69,7 +69,10 @@
     updateUi();
   }
   function start() {
-    stopCamera(); reset(); state.status = "playing"; hide(ui.start); hide(ui.over); hide(ui.pause); hide(ui.cameraScreen); audio.play("collect");
+    stopCamera();
+    reset(); state.status = "playing";
+    hide(ui.start); hide(ui.over); hide(ui.pause); hide(ui.cameraScreen);
+    audio.play("collect");
   }
   function pause() {
     if (state.status !== "playing") return;
@@ -190,7 +193,8 @@
     if (!navigator.mediaDevices?.getUserMedia) { ui.cameraMessage.textContent = "Camera access is not supported by this browser. Try a modern browser."; return; }
     if (!window.isSecureContext) { ui.cameraMessage.textContent = "Camera access needs a secure connection. Open the game over HTTPS."; return; }
     try {
-      stopCamera(); state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      stopCamera();
+      state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
       ui.cameraPreview.srcObject = state.cameraStream; await ui.cameraPreview.play(); ui.capture.disabled = false;
       ui.cameraMessage.textContent = "Ready! Center your face, then take the photo.";
     } catch (error) {
@@ -211,7 +215,10 @@
         if (state.faceImageUrl) URL.revokeObjectURL(state.faceImageUrl);
         state.faceImage = image; state.faceImageUrl = faceImageUrl; stopCamera(); hide(ui.cameraScreen);
       };
-      image.onerror = () => URL.revokeObjectURL(faceImageUrl);
+      image.onerror = () => {
+        URL.revokeObjectURL(faceImageUrl);
+        ui.cameraMessage.textContent = "The photo could not be used. Please take another one.";
+      };
       image.src = faceImageUrl;
     }, "image/jpeg", CAMERA_JPEG_QUALITY);
   }
