@@ -8,9 +8,10 @@ No installation, server, or build step is needed. Open `index.html` in a modern 
 
 ## Controls
 
-- Tap or click anywhere in the game to jump.
-- Press the space bar to jump.
+- Tap or click anywhere in the game to jump. Hold longer for a higher, longer jump.
+- Press and hold the space bar to jump higher.
 - Use the pause button for a break. The game also pauses when its tab loses focus.
+- On the start screen, select **Add your face** to take a camera photo for the runner. The photo stays only in the current browser session.
 
 The game saves the best score and sound preference in browser local storage. Sound effects are synthesized in the browser, so the game remains fully offline without external audio files.
 

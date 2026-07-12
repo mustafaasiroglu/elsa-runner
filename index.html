@@ -23,11 +23,24 @@
         <p class="subtitle">A magical little run</p>
         <button id="play-button" class="primary-button">▶ Play</button>
         <div class="menu-actions">
+          <button id="camera-button" class="secondary-button">📷 Add your face</button>
           <button id="sound-button" class="secondary-button" aria-pressed="true">🔊 Sound</button>
           <button id="fullscreen-button" class="secondary-button">⛶ Big screen</button>
         </div>
         <p class="best-score">🏆 Best <strong id="best-score">0</strong></p>
-        <p class="tap-hint">Tap, click, or press space to jump</p>
+        <p class="tap-hint">Hold to jump higher · Tap, click, or press space to jump</p>
+      </div>
+    </section>
+    <section id="camera-screen" class="overlay hidden" aria-labelledby="camera-title">
+      <div class="panel camera-panel">
+        <h2 id="camera-title">Add your face</h2>
+        <p class="subtitle">Take a photo to put your face on the runner.</p>
+        <video id="camera-preview" class="camera-preview" autoplay muted playsinline aria-label="Camera preview"></video>
+        <p id="camera-message" class="camera-message" role="status">Allow camera access to take a photo.</p>
+        <div class="menu-actions">
+          <button id="capture-button" class="primary-button" disabled>📸 Take photo</button>
+          <button id="close-camera-button" class="secondary-button">Cancel</button>
+        </div>
       </div>
     </section>
     <section id="pause-screen" class="overlay hidden" aria-labelledby="pause-title">
