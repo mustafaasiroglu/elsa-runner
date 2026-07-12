@@ -166,9 +166,9 @@
     if (state.faceImage) drawFacePhoto(26, 22 + bounce, 14);
     else {
       ctx.fillStyle = "#305c9e"; [19, 33].forEach((x) => { ctx.beginPath(); ctx.arc(x, 23 + bounce, 3.5, 0, Math.PI * 2); ctx.fill(); });
-      ctx.fillStyle = "#ed849d"; ctx.beginPath(); ctx.arc(26, 31 + bounce, 4, 0, Math.PI);
+      ctx.fillStyle = "#ed849d"; ctx.beginPath(); ctx.arc(26, 31 + bounce, 4, 0, Math.PI); ctx.fill();
     }
-    ctx.fill(); ctx.restore();
+    ctx.restore();
   }
   function drawFacePhoto(x, y, radius) {
     const image = state.faceImage, sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
