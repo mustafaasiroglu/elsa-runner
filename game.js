@@ -186,7 +186,7 @@
   }
   async function openCamera() {
     show(ui.cameraScreen); ui.cameraMessage.textContent = "Allow camera access to take a photo."; ui.capture.disabled = true;
-    if (!navigator.mediaDevices?.getUserMedia) { ui.cameraMessage.textContent = "Camera access is not available in this browser."; return; }
+    if (!navigator.mediaDevices?.getUserMedia) { ui.cameraMessage.textContent = "Camera access is not supported here. Try a modern browser over HTTPS."; return; }
     try {
       stopCamera(); state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
       ui.cameraPreview.srcObject = state.cameraStream; await ui.cameraPreview.play(); ui.capture.disabled = false;
