@@ -16,10 +16,9 @@ The game saves the best score and sound preference in browser local storage. Sou
 
 ## GitHub Pages
 
-1. Push this repository to GitHub.
-2. In **Settings → Pages**, select **Deploy from a branch**.
-3. Select the branch containing these files and the `/ (root)` folder.
-4. Save. The game will be available at `https://username.github.io/repository-name/`.
+1. Push to the `main` branch.
+2. In **Settings → Pages**, select **GitHub Actions** as the source.
+3. The included workflow publishes the game automatically. It will be available at `https://username.github.io/repository-name/`.
 
 All paths are relative, so it works when deployed from a project subdirectory.
 
