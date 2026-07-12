@@ -56,7 +56,7 @@
   function reset() {
     state.time = state.distance = state.score = state.flakes = state.shake = 0;
     state.obstacles = []; state.collectibles = []; state.particles = []; state.nextObstacle = 1.45; state.nextCollectible = 2.2;
-    state.player = { x: state.width * .18, y: state.ground - 64, w: 52, h: 64, vy: 0, onGround: true, squish: 0 };
+    state.player = { x: state.width * .18, y: state.ground - 64, w: 52, h: 64, vy: 0, onGround: true, squish: 0, jumpHeld: false, holdTime: 0 };
     updateUi();
   }
   function start() {
@@ -79,9 +79,9 @@
     if (state.status === "start" || state.status === "over") { start(); return; }
     if (state.status === "paused") { resume(); return; }
     const p = state.player;
-    if (p.onGround) { p.vy = -Math.max(500, state.height * .77); p.onGround = false; p.squish = -.18; audio.play("jump"); }
+    if (p.onGround) { p.vy = -Math.max(575, state.height * .86); p.onGround = false; p.jumpHeld = true; p.holdTime = 0; p.squish = -.18; audio.play("jump"); }
   }
-  function speed() { return Math.min(310, 145 + Math.floor(state.time / 20) * 19); }
+  function speed() { return Math.min(260, 125 + Math.floor(state.time / 24) * 15); }
   function spawnObstacle() {
     const types = ["rock", "snowfriend", "bush", "hill"];
     const type = types[Math.floor(Math.random() * types.length)];
@@ -101,10 +101,12 @@
   function update(dt) {
     if (state.status !== "playing") return;
     state.time += dt; state.distance += speed() * dt; state.score = Math.floor(state.distance / 13) + state.flakes * 10;
-    const p = state.player; p.vy += 1500 * dt; p.y += p.vy * dt; p.squish *= Math.pow(.001, dt);
-    if (p.y >= state.ground - p.h) { if (!p.onGround && p.vy > 220) p.squish = .16; p.y = state.ground - p.h; p.vy = 0; p.onGround = true; }
+    const p = state.player;
+    if (p.jumpHeld && p.vy < 0 && p.holdTime < .18) { p.vy -= 680 * dt; p.holdTime += dt; }
+    p.vy += 1350 * dt; p.y += p.vy * dt; p.squish *= Math.pow(.001, dt);
+    if (p.y >= state.ground - p.h) { if (!p.onGround && p.vy > 220) p.squish = .16; p.y = state.ground - p.h; p.vy = 0; p.onGround = true; p.jumpHeld = false; }
     state.nextObstacle -= dt; state.nextCollectible -= dt;
-    if (state.nextObstacle <= 0) { spawnObstacle(); state.nextObstacle = 1.35 + Math.random() * 1.05 - Math.min(.28, state.time / 200); }
+    if (state.nextObstacle <= 0) { spawnObstacle(); state.nextObstacle = 1.65 + Math.random() * 1.2 - Math.min(.2, state.time / 240); }
     if (state.nextCollectible <= 0) { spawnCollectible(); state.nextCollectible = 1.25 + Math.random() * 1.7; }
     const movement = speed() * dt;
     state.obstacles.forEach((o) => o.x -= movement);
@@ -140,7 +142,22 @@
   function drawMountains(d) { for (let i = -1; i < 5; i++) { const x = i * state.width * .32 - (d * .08 % (state.width * .32)); ctx.fillStyle = "#a6d6ed"; ctx.beginPath(); ctx.moveTo(x, state.ground); ctx.lineTo(x + state.width * .17, state.ground - 145); ctx.lineTo(x + state.width * .34, state.ground); ctx.fill(); ctx.fillStyle = "#dff9ff"; ctx.beginPath(); ctx.moveTo(x + state.width * .17, state.ground - 145); ctx.lineTo(x + state.width * .12, state.ground - 103); ctx.lineTo(x + state.width * .19, state.ground - 116); ctx.lineTo(x + state.width * .23, state.ground - 90); ctx.fill(); } }
   function drawCastle(x, y) { ctx.fillStyle = "#b9e8f8"; ctx.fillRect(x, y, 83, 103); [0, 32, 65].forEach((offset) => { ctx.fillRect(x + offset, y - 33, 19, 48); ctx.beginPath(); ctx.moveTo(x + offset - 4, y - 33); ctx.lineTo(x + offset + 9, y - 54); ctx.lineTo(x + offset + 23, y - 33); ctx.fill(); }); ctx.fillStyle = "#fff3a5"; for (let i = 0; i < 3; i++) ctx.fillRect(x + 12 + i * 23, y + 27, 7, 12); }
   function drawTrees(d) { for (let i = -1; i < 8; i++) { const x = i * 108 - (d * .28 % 108), y = state.ground - 3; ctx.fillStyle = "#79c8cf"; ctx.fillRect(x + 22, y - 30, 6, 30); ["#bff1ed", "#9be0df", "#78c8d1"].forEach((color, n) => { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x, y - 13 - n * 13); ctx.lineTo(x + 25, y - 59 - n * 13); ctx.lineTo(x + 50, y - 13 - n * 13); ctx.fill(); }); } }
-  function drawPrincess(p) { const bounce = p.onGround ? Math.sin(state.time * 15) * 2 : 0, scaleY = 1 + p.squish, scaleX = 1 - p.squish * .45; ctx.save(); ctx.translate(p.x + p.w / 2, p.y + p.h); ctx.scale(scaleX, scaleY); ctx.translate(-p.w / 2, -p.h); roundRect(14, 29 + bounce, 25, 31, 10, "#82cbec"); ctx.fillStyle = "#dffaff"; ctx.beginPath(); ctx.moveTo(13, 32 + bounce); ctx.lineTo(4, 63); ctx.lineTo(27, 51); ctx.lineTo(46, 63); ctx.lineTo(39, 32 + bounce); ctx.fill(); ctx.fillStyle = "#f7c6b5"; ctx.beginPath(); ctx.arc(26, 21 + bounce, 18, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#b6f2ff"; ctx.beginPath(); ctx.arc(26, 16 + bounce, 20, Math.PI, Math.PI * 2); ctx.fill(); ctx.fillRect(7, 14 + bounce, 10, 9); ctx.fillRect(35, 14 + bounce, 10, 9); ctx.fillStyle = "#305c9e"; [19, 33].forEach((x) => { ctx.beginPath(); ctx.arc(x, 23 + bounce, 3.5, 0, Math.PI * 2); ctx.fill(); }); ctx.fillStyle = "#ed849d"; ctx.beginPath(); ctx.arc(26, 31 + bounce, 4, 0, Math.PI); ctx.fill(); ctx.restore(); }
+  function drawPrincess(p) {
+    const bounce = p.onGround ? Math.sin(state.time * 15) * 2 : 0, scaleY = 1 + p.squish, scaleX = 1 - p.squish * .45;
+    ctx.save(); ctx.translate(p.x + p.w / 2, p.y + p.h); ctx.scale(scaleX, scaleY); ctx.translate(-p.w / 2, -p.h);
+    ctx.strokeStyle = "#e7ad20"; ctx.lineWidth = 7; ctx.lineCap = "round";
+    [[12, 25, 7, 48, 13, 62], [40, 25, 45, 48, 39, 62]].forEach((braid) => {
+      ctx.beginPath(); ctx.moveTo(braid[0], braid[1] + bounce); ctx.quadraticCurveTo(braid[2], braid[3] + bounce, braid[4], braid[5] + bounce); ctx.stroke();
+      ctx.fillStyle = "#ff79a9"; ctx.fillRect(braid[4] - 3, braid[5] - 2 + bounce, 6, 5);
+    });
+    roundRect(12, 29 + bounce, 29, 31, 10, "#74d5f5");
+    ctx.fillStyle = "#c6f4ff"; ctx.beginPath(); ctx.moveTo(12, 34 + bounce); ctx.lineTo(3, 63); ctx.lineTo(27, 53); ctx.lineTo(49, 63); ctx.lineTo(41, 34 + bounce); ctx.fill();
+    ctx.fillStyle = "#9b79de"; ctx.fillRect(15, 35 + bounce, 24, 5); ctx.fillStyle = "#fff4a8"; ctx.fillRect(24, 36 + bounce, 6, 18);
+    ctx.fillStyle = "#f7c6b5"; ctx.beginPath(); ctx.arc(26, 21 + bounce, 18, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f5c83c"; ctx.beginPath(); ctx.arc(26, 15 + bounce, 20, Math.PI, Math.PI * 2); ctx.fill(); ctx.fillRect(7, 14 + bounce, 11, 10); ctx.fillRect(34, 14 + bounce, 11, 10);
+    ctx.fillStyle = "#305c9e"; [19, 33].forEach((x) => { ctx.beginPath(); ctx.arc(x, 23 + bounce, 3.5, 0, Math.PI * 2); ctx.fill(); });
+    ctx.fillStyle = "#ed849d"; ctx.beginPath(); ctx.arc(26, 31 + bounce, 4, 0, Math.PI); ctx.fill(); ctx.restore();
+  }
   function drawObstacle(o) { if (o.type === "snowfriend") { ctx.fillStyle = "#f9feff"; ctx.beginPath(); ctx.arc(o.x + 21, o.y + 37, 17, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(o.x + 21, o.y + 18, 12, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#ff9f61"; ctx.fillRect(o.x + 21, o.y + 19, 10, 3); } else if (o.type === "bush") { roundRect(o.x, o.y + 12, o.w, o.h - 12, 16, "#75cfcf"); ctx.fillStyle = "#d4fbff"; ctx.fillRect(o.x + 5, o.y + 13, o.w - 10, 5); } else { ctx.fillStyle = o.type === "hill" ? "#a9e3f6" : "#78c5e6"; ctx.beginPath(); ctx.moveTo(o.x, o.y + o.h); ctx.quadraticCurveTo(o.x + o.w / 2, o.y - 10, o.x + o.w, o.y + o.h); ctx.fill(); ctx.fillStyle = "#e1faff"; ctx.beginPath(); ctx.moveTo(o.x + 6, o.y + o.h - 8); ctx.lineTo(o.x + o.w / 2, o.y); ctx.lineTo(o.x + o.w - 8, o.y + o.h - 8); ctx.fill(); } }
   function drawFlake(c) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.spin); ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { ctx.rotate(Math.PI / 3); ctx.beginPath(); ctx.moveTo(-c.r, 0); ctx.lineTo(c.r, 0); ctx.stroke(); } ctx.restore(); }
   function updateUi() { ui.score.textContent = state.score; ui.flakes.textContent = state.flakes; ui.best.textContent = state.best; }
@@ -150,8 +167,12 @@
   ui.pauseButton.addEventListener("click", () => state.status === "playing" ? pause() : resume());
   ui.sound.addEventListener("click", () => { state.muted = !state.muted; storage.set("snowySkiesMuted", state.muted); ui.sound.textContent = state.muted ? "🔇 Sound" : "🔊 Sound"; ui.sound.setAttribute("aria-pressed", String(!state.muted)); if (!state.muted) audio.play("collect"); });
   ui.fullscreen.addEventListener("click", async () => { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); storage.set("snowySkiesFullscreen", String(Boolean(document.fullscreenElement))); } catch { /* Fullscreen is optional. */ } });
-  canvas.addEventListener("pointerdown", (event) => { if (event.pointerType === "mouse" && event.button !== 0) return; jump(); });
-  window.addEventListener("keydown", (event) => { if (event.code === "Space") { event.preventDefault(); jump(); } });
+  canvas.addEventListener("pointerdown", (event) => { if (event.pointerType === "mouse" && event.button !== 0) return; event.preventDefault(); canvas.setPointerCapture?.(event.pointerId); jump(); });
+  canvas.addEventListener("pointerup", () => { if (state.player) state.player.jumpHeld = false; });
+  canvas.addEventListener("pointercancel", () => { if (state.player) state.player.jumpHeld = false; });
+  canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+  window.addEventListener("keydown", (event) => { if (event.code === "Space" && !event.repeat) { event.preventDefault(); jump(); } });
+  window.addEventListener("keyup", (event) => { if (event.code === "Space" && state.player) state.player.jumpHeld = false; });
   window.addEventListener("blur", pause); document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   window.addEventListener("resize", resize); resize(); reset(); ui.sound.textContent = state.muted ? "🔇 Sound" : "🔊 Sound"; ui.sound.setAttribute("aria-pressed", String(!state.muted)); requestAnimationFrame(frame);
 })();
