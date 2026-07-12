@@ -3,8 +3,9 @@
   const $ = (id) => document.getElementById(id);
   const canvas = $("game");
   const ctx = canvas.getContext("2d");
-  const MAX_JUMP_HOLD = .18;
-  const JUMP_HOLD_BOOST = 680;
+  const MAX_JUMP_HOLD = .32;
+  const JUMP_HOLD_BOOST = 1100;
+  const CAMERA_JPEG_QUALITY = .9;
   const OBSTACLE_DELAY_START = 1.65;
   const OBSTACLE_DELAY_VARIANCE = 1.2;
   const OBSTACLE_DELAY_REDUCTION = .2;
@@ -14,7 +15,9 @@
     finalFlakes: $("final-flakes"), start: $("start-screen"), pause: $("pause-screen"),
     over: $("game-over-screen"), play: $("play-button"), again: $("again-button"),
     resume: $("resume-button"), pauseButton: $("pause-button"), sound: $("sound-button"),
-    fullscreen: $("fullscreen-button")
+    fullscreen: $("fullscreen-button"), camera: $("camera-button"), cameraScreen: $("camera-screen"),
+    cameraPreview: $("camera-preview"), cameraMessage: $("camera-message"), capture: $("capture-button"),
+    closeCamera: $("close-camera-button")
   };
   const storage = {
     get(key, fallback) { try { const value = localStorage.getItem(key); return value === null ? fallback : value; } catch { return fallback; } },
@@ -24,7 +27,7 @@
     status: "start", width: 0, height: 0, ground: 0, time: 0, distance: 0, score: 0, flakes: 0,
     best: Number(storage.get("snowySkiesBest", "0")) || 0, muted: storage.get("snowySkiesMuted", "false") === "true",
     player: null, obstacles: [], collectibles: [], particles: [], snow: [], clouds: [], nextObstacle: 1.5,
-    nextCollectible: 2.5, lastFrame: 0, shake: 0
+    nextCollectible: 2.5, lastFrame: 0, shake: 0, faceImage: null, faceImageUrl: null, cameraStream: null
   };
   const audio = {
     context: null,
@@ -66,7 +69,10 @@
     updateUi();
   }
   function start() {
-    reset(); state.status = "playing"; hide(ui.start); hide(ui.over); hide(ui.pause); audio.play("collect");
+    stopCamera();
+    reset(); state.status = "playing";
+    hide(ui.start); hide(ui.over); hide(ui.pause); hide(ui.cameraScreen);
+    audio.play("collect");
   }
   function pause() {
     if (state.status !== "playing") return;
@@ -161,16 +167,67 @@
     ctx.fillStyle = "#9b79de"; ctx.fillRect(15, 35 + bounce, 24, 5); ctx.fillStyle = "#fff4a8"; ctx.fillRect(24, 36 + bounce, 6, 18);
     ctx.fillStyle = "#f7c6b5"; ctx.beginPath(); ctx.arc(26, 21 + bounce, 18, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#f5c83c"; ctx.beginPath(); ctx.arc(26, 15 + bounce, 20, Math.PI, Math.PI * 2); ctx.fill(); ctx.fillRect(7, 14 + bounce, 11, 10); ctx.fillRect(34, 14 + bounce, 11, 10);
-    ctx.fillStyle = "#305c9e"; [19, 33].forEach((x) => { ctx.beginPath(); ctx.arc(x, 23 + bounce, 3.5, 0, Math.PI * 2); ctx.fill(); });
-    ctx.fillStyle = "#ed849d"; ctx.beginPath(); ctx.arc(26, 31 + bounce, 4, 0, Math.PI); ctx.fill(); ctx.restore();
+    if (state.faceImage) drawFacePhoto(26, 22 + bounce, 14);
+    else {
+      ctx.fillStyle = "#305c9e"; [19, 33].forEach((x) => { ctx.beginPath(); ctx.arc(x, 23 + bounce, 3.5, 0, Math.PI * 2); ctx.fill(); });
+      ctx.fillStyle = "#ed849d"; ctx.beginPath(); ctx.arc(26, 31 + bounce, 4, 0, Math.PI); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawFacePhoto(x, y, radius) {
+    const image = state.faceImage, sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+    if (!sourceSize) return;
+    ctx.save(); ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(image, (image.naturalWidth - sourceSize) / 2, (image.naturalHeight - sourceSize) / 2, sourceSize, sourceSize, x - radius, y - radius, radius * 2, radius * 2);
+    ctx.restore();
   }
   function drawObstacle(o) { if (o.type === "snowfriend") { ctx.fillStyle = "#f9feff"; ctx.beginPath(); ctx.arc(o.x + 21, o.y + 37, 17, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(o.x + 21, o.y + 18, 12, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#ff9f61"; ctx.fillRect(o.x + 21, o.y + 19, 10, 3); } else if (o.type === "bush") { roundRect(o.x, o.y + 12, o.w, o.h - 12, 16, "#75cfcf"); ctx.fillStyle = "#d4fbff"; ctx.fillRect(o.x + 5, o.y + 13, o.w - 10, 5); } else { ctx.fillStyle = o.type === "hill" ? "#a9e3f6" : "#78c5e6"; ctx.beginPath(); ctx.moveTo(o.x, o.y + o.h); ctx.quadraticCurveTo(o.x + o.w / 2, o.y - 10, o.x + o.w, o.y + o.h); ctx.fill(); ctx.fillStyle = "#e1faff"; ctx.beginPath(); ctx.moveTo(o.x + 6, o.y + o.h - 8); ctx.lineTo(o.x + o.w / 2, o.y); ctx.lineTo(o.x + o.w - 8, o.y + o.h - 8); ctx.fill(); } }
   function drawFlake(c) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.spin); ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { ctx.rotate(Math.PI / 3); ctx.beginPath(); ctx.moveTo(-c.r, 0); ctx.lineTo(c.r, 0); ctx.stroke(); } ctx.restore(); }
   function updateUi() { ui.score.textContent = state.score; ui.flakes.textContent = state.flakes; ui.best.textContent = state.best; }
   function show(element) { element.classList.remove("hidden"); } function hide(element) { element.classList.add("hidden"); }
+  function stopCamera() {
+    state.cameraStream?.getTracks().forEach((track) => track.stop());
+    state.cameraStream = null; ui.cameraPreview.srcObject = null; ui.capture.disabled = true;
+  }
+  async function openCamera() {
+    show(ui.cameraScreen); ui.cameraMessage.textContent = "Allow camera access to take a photo."; ui.capture.disabled = true;
+    if (!navigator.mediaDevices?.getUserMedia) { ui.cameraMessage.textContent = "Camera access is not supported by this browser. Try a modern browser."; return; }
+    if (!window.isSecureContext) { ui.cameraMessage.textContent = "Camera access needs a secure connection. Open the game over HTTPS."; return; }
+    try {
+      stopCamera();
+      state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      ui.cameraPreview.srcObject = state.cameraStream; await ui.cameraPreview.play(); ui.capture.disabled = false;
+      ui.cameraMessage.textContent = "Ready! Center your face, then take the photo.";
+    } catch (error) {
+      ui.cameraMessage.textContent = error.name === "NotAllowedError"
+        ? "Camera access was denied. Allow it in your browser settings and try again."
+        : "We could not access the camera. Check your camera and try again.";
+    }
+  }
+  function captureFace() {
+    const { videoWidth: width, videoHeight: height } = ui.cameraPreview;
+    if (!width || !height) { ui.cameraMessage.textContent = "Unable to capture photo. Wait for the camera preview to load."; return; }
+    const photo = document.createElement("canvas"); photo.width = width; photo.height = height;
+    photo.getContext("2d").drawImage(ui.cameraPreview, 0, 0, width, height);
+    photo.toBlob((blob) => {
+      if (!blob) { ui.cameraMessage.textContent = "Failed to create the photo. Please try again."; return; }
+      const image = new Image(), faceImageUrl = URL.createObjectURL(blob);
+      image.onload = () => {
+        if (state.faceImageUrl) URL.revokeObjectURL(state.faceImageUrl);
+        state.faceImage = image; state.faceImageUrl = faceImageUrl; stopCamera(); hide(ui.cameraScreen);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(faceImageUrl);
+        ui.cameraMessage.textContent = "The photo could not be used. Please take another one.";
+      };
+      image.src = faceImageUrl;
+    }, "image/jpeg", CAMERA_JPEG_QUALITY);
+  }
   function frame(now) { const dt = Math.min(.035, (now - state.lastFrame) / 1000 || 0); state.lastFrame = now; update(dt); render(); requestAnimationFrame(frame); }
   ui.play.addEventListener("click", start); ui.again.addEventListener("click", start); ui.resume.addEventListener("click", resume);
   ui.pauseButton.addEventListener("click", () => state.status === "playing" ? pause() : resume());
+  ui.camera.addEventListener("click", openCamera); ui.capture.addEventListener("click", captureFace);
+  ui.closeCamera.addEventListener("click", () => { stopCamera(); hide(ui.cameraScreen); });
   ui.sound.addEventListener("click", () => { state.muted = !state.muted; storage.set("snowySkiesMuted", state.muted); ui.sound.textContent = state.muted ? "🔇 Sound" : "🔊 Sound"; ui.sound.setAttribute("aria-pressed", String(!state.muted)); if (!state.muted) audio.play("collect"); });
   ui.fullscreen.addEventListener("click", async () => { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); storage.set("snowySkiesFullscreen", String(Boolean(document.fullscreenElement))); } catch { /* Fullscreen is optional. */ } });
   canvas.addEventListener("pointerdown", (event) => { if (event.pointerType === "mouse" && event.button !== 0) return; event.preventDefault(); canvas.setPointerCapture?.(event.pointerId); jump(); });
