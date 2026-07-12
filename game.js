@@ -3,6 +3,12 @@
   const $ = (id) => document.getElementById(id);
   const canvas = $("game");
   const ctx = canvas.getContext("2d");
+  const MAX_JUMP_HOLD = .18;
+  const JUMP_HOLD_BOOST = 680;
+  const OBSTACLE_DELAY_START = 1.65;
+  const OBSTACLE_DELAY_VARIANCE = 1.2;
+  const OBSTACLE_DELAY_REDUCTION = .2;
+  const OBSTACLE_DELAY_REDUCTION_TIME = 240;
   const ui = {
     score: $("score"), flakes: $("flakes"), best: $("best-score"), finalScore: $("final-score"),
     finalFlakes: $("final-flakes"), start: $("start-screen"), pause: $("pause-screen"),
@@ -102,11 +108,11 @@
     if (state.status !== "playing") return;
     state.time += dt; state.distance += speed() * dt; state.score = Math.floor(state.distance / 13) + state.flakes * 10;
     const p = state.player;
-    if (p.jumpHeld && p.vy < 0 && p.holdTime < .18) { p.vy -= 680 * dt; p.holdTime += dt; }
+    if (p.jumpHeld && p.vy < 0 && p.holdTime < MAX_JUMP_HOLD) { p.vy -= JUMP_HOLD_BOOST * dt; p.holdTime += dt; }
     p.vy += 1350 * dt; p.y += p.vy * dt; p.squish *= Math.pow(.001, dt);
     if (p.y >= state.ground - p.h) { if (!p.onGround && p.vy > 220) p.squish = .16; p.y = state.ground - p.h; p.vy = 0; p.onGround = true; p.jumpHeld = false; }
     state.nextObstacle -= dt; state.nextCollectible -= dt;
-    if (state.nextObstacle <= 0) { spawnObstacle(); state.nextObstacle = 1.65 + Math.random() * 1.2 - Math.min(.2, state.time / 240); }
+    if (state.nextObstacle <= 0) { spawnObstacle(); state.nextObstacle = OBSTACLE_DELAY_START + Math.random() * OBSTACLE_DELAY_VARIANCE - Math.min(OBSTACLE_DELAY_REDUCTION, state.time / OBSTACLE_DELAY_REDUCTION_TIME); }
     if (state.nextCollectible <= 0) { spawnCollectible(); state.nextCollectible = 1.25 + Math.random() * 1.7; }
     const movement = speed() * dt;
     state.obstacles.forEach((o) => o.x -= movement);
